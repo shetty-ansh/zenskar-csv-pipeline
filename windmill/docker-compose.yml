@@ -1,0 +1,25 @@
+version: "3.8"
+
+services:
+  windmill:
+    image: ghcr.io/windmill-labs/windmill:latest
+    env_file:
+      - .env
+    volumes:
+      - windmill-data:/data
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    ports:
+      - "8000:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+
+volumes:
+  windmill-data:
+  caddy-data:
+  caddy-config:

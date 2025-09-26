@@ -1,0 +1,13 @@
+CustomerID,FirstName,LastName,Email,Phone,City,Country
+C001,Ananya,Sharma,ananya.sharma@example.com,9876543210,Mumbai,India
+C002,Rahul,Verma,rahul.verma@example.com,9988776655,Delhi,India
+C003,Sneha,Patel,sneha.patel@example,9123456780,Ahmedabad,India
+C004,Arjun,Mehta,arjun.mehta@example.com,98765B01234,Bengaluru,India
+C005,Pooja,Reddy,pooja.reddy@example.com,9765432109,Hyderabad,India
+C006,Karan,,karan.kapoor@example.com,9812345678,Chennai,India
+C007,Divya,Nair,divya.nair@example.com,9908765432,Kochi,India
+C008,Vikram,Singh,vikram.singh@example.com,9786543210,Jaipur,India
+C009,Aroop,Pandey,arooppandey@example.com,,Pune,India
+C010,Maya,Kaur,maya.kaur@example.com,1234567,,India
+C011,John,Doe,john.doe@example.com,9876543210,New York,USA
+C012,Lisa,Smith,lisa.smithexample.com,9876543210,London,UK

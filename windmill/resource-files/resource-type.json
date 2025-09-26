@@ -1,0 +1,48 @@
+{
+  "CSV_TRANSFORM_CONFIG": {
+    "FIELD_MAPPING": {
+      "City": "city",
+      "Email": "email",
+      "Phone": "contact",
+      "Country": "country",
+      "LastName": "last_name",
+      "FirstName": "first_name",
+      "CustomerID": "id"
+    },
+    "REQUIRED_FIELDS": ["first_name", "last_name", "email", "contact"],
+    "VALIDATORS": {
+      "email_pattern": "^[\\w\\.-]+@[\\w\\.-]+\\.\\w+$",
+      "phone_max_length": 15,
+      "phone_min_length": 7
+    },
+    "BUSINESS_LOGIC": {
+      "source": "csv_upload",
+      "name_format": "{first_name} {last_name}",
+      "metadata_format": "{city}, {country}"
+    }
+  },
+  "API_CONFIG": {
+    "API_ENDPOINT": "Your mockapi.io endpoint",
+    "BATCH_SIZE": 2,
+    "MAX_RETRIES": 3,
+    "RETRY_DELAY": 2,
+    "ALLOWED_FIELDS": [
+      "id",
+      "first_name",
+      "last_name",
+      "email",
+      "contact",
+      "city",
+      "country",
+      "metadata",
+      "name"
+    ],
+    "HEADERS": {
+      "Content-Type": "application/json"
+    },
+    "AUTH": {
+      "type": "none",
+      "token": ""
+    }
+  }
+}
