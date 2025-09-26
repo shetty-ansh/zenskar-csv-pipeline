@@ -1,25 +1,26 @@
-Zenskar — CSV → Transform → MockAPI
+# Zenskar — CSV → Transform → MockAPI
 
-What this doc contains
+This document explains how to configure, operate, and test the CSV-to-MockAPI flow using Windmill.  
+It is divided into a **Developer guide** (how to modify transformation rules, validators, API settings, and advanced tips) and a **User guide** (how to operate the CSV upload flow in Windmill, run it, and read logs/results).  
+It also includes MockAPI endpoint configuration and a quick checklist for submission/testing.
 
-Developer guide — how to modify transformation rules, validators, API settings, and advanced tips.
+---
 
-User guide — how to operate the CSV upload flow in Windmill, run it, and read logs/results.
+## 1 — Developer Guide (Modify Transformation Rules)
 
-MockAPI configuration & endpoint (schema + example payloads).
-
-Quick checklist for submission and testing.
-
-1 — Developer Guide (modify transformation rules)
-Where configuration lives
+### Where Configuration Lives
 
 All runtime-configurable behavior is driven from a single Windmill resource JSON named (example):
 
+```
 u/anshshetty22/customers_csv
+```
 
+It contains two sections: `CSV_TRANSFORM_CONFIG` and `API_CONFIG`.
 
-It contains two sections: CSV_TRANSFORM_CONFIG and API_CONFIG. Example combined config:
+#### Example Combined Config
 
+```json
 {
   "CSV_TRANSFORM_CONFIG": {
     "FIELD_MAPPING": {
@@ -43,9 +44,8 @@ It contains two sections: CSV_TRANSFORM_CONFIG and API_CONFIG. Example combined 
       "metadata_format": "{city}, {country}"
     }
   },
-
   "API_CONFIG": {
-    "API_ENDPOINT": "https://68d54743e29051d1c0adfb54.mockapi.io/zenskar/customers",
+    "API_ENDPOINT": "https://<your-endpoint>.mockapi.io/customers",
     "BATCH_SIZE": 3,
     "MAX_RETRIES": 3,
     "RETRY_DELAY": 2,
@@ -54,104 +54,109 @@ It contains two sections: CSV_TRANSFORM_CONFIG and API_CONFIG. Example combined 
     "AUTH": { "type": "none" }
   }
 }
+```
 
+> **Important:** Update the actual `API_ENDPOINT` to your project's MockAPI URL.
 
-Important: update the actual API_ENDPOINT to your project's MockAPI URL.
+---
 
-How to add / change a field mapping
+### How to Add / Change a Field Mapping
 
-Edit CSV_TRANSFORM_CONFIG.FIELD_MAPPING in the resource.
+- Edit `CSV_TRANSFORM_CONFIG.FIELD_MAPPING` in the resource.
+- The left side is the CSV header name, the right side is the target customer object key.
 
-Left side is CSV header name, right side is target customer object key.
-
-Example: to add PostalCode → postal_code:
-
+**Example (adding PostalCode → postal_code):**
+```json
 "FIELD_MAPPING": {
   "PostalCode": "postal_code",
   ...
 }
-
+```
 
 No code change required — Script 2 will pick it up automatically.
 
-How to add / change validation rules
+---
 
-Validation is encoded in CSV_TRANSFORM_CONFIG.VALIDATORS.
+### How to Add / Change Validation Rules
 
-Email regex: change email_pattern (it's a raw string used by re.compile()).
+- Validation is encoded in `CSV_TRANSFORM_CONFIG.VALIDATORS`.
 
-Phone rules: change phone_min_length & phone_max_length.
+**For email regex:**  
+Change `email_pattern` (raw string, used by `re.compile()`).
 
-Example to accept 6–20 digits:
+**For phone rules:**  
+Change `phone_min_length` & `phone_max_length`.
 
+**Example (accept 6–20 digits):**
+```json
 "VALIDATORS": {
   "email_pattern": "^[\\w\\.-]+@[\\w\\.-]+\\.\\w+$",
   "phone_min_length": 6,
   "phone_max_length": 20
 }
-
+```
 
 Script 2 reads these and applies them; no code change needed.
 
-How to change business logic
+---
 
-BUSINESS_LOGIC contains templates used by .format(**customer):
+### How to Change Business Logic
 
-name_format: e.g. "{first_name} {last_name}"
+- `BUSINESS_LOGIC` contains templates used by `.format(**customer)`:
 
-metadata_format: e.g. "{city}, {country}"
+  - `name_format`: e.g. `"{first_name} {last_name}"`
+  - `metadata_format`: e.g. `"{city}, {country}"`
 
-To include postal code:
-
+**To include postal code:**
+```json
 "name_format": "{first_name} {last_name}",
 "metadata_format": "{city}, {country}, {postal_code}"
+```
 
+If the template references keys that don’t exist, Script 2 will mark the row invalid and log the missing key.
 
-If the template references keys that don't exist, Script 2 will mark the row invalid and log the missing key.
+---
 
-How to change API behavior (batch / retries / headers / auth)
+### How to Change API Behavior (Batch/Retry/Headers/Auth)
 
-Edit API_CONFIG:
+Edit `API_CONFIG`:
 
-BATCH_SIZE — number of customers per batch (Script 3 batches for progress logs; posting is per-customer inside batch).
+- `BATCH_SIZE` — number of customers per batch (Script 3 batches for progress logs; posting is per-customer inside batch).
+- `MAX_RETRIES` & `RETRY_DELAY` — retry policy for transient failures.
+- `ALLOWED_FIELDS` — whitelist of keys to send in API payloads.
+- `HEADERS` — any HTTP headers (e.g., `{"Content-Type":"application/json"}`).
+- `AUTH` — object with:
+    - `{"type":"none"}`
+    - `{"type":"bearer","token":"TOKEN"}`
+    - `{"type":"basic","username":"u","password":"p"}`
 
-MAX_RETRIES & RETRY_DELAY — retry policy for transient failures.
+Script 3 reads `AUTH` and applies headers/auth automatically — just change config.
 
-ALLOWED_FIELDS — whitelist of keys to send in API payloads.
+---
 
-HEADERS — any HTTP headers (e.g., {"Content-Type":"application/json"}).
+### How to Add a Custom Validator or Business Check
 
-AUTH — object with:
+If you need a new type of validation (e.g., checksum, external lookup):
 
-{"type":"none"} or
+1. Add a config flag to `CSV_TRANSFORM_CONFIG` (e.g., `"check_tax_id": true`).
+2. Implement the validation function in Script 2:
 
-{"type":"bearer","token":"TOKEN"} or
-
-{"type":"basic","username":"u","password":"p"}
-
-Script 3 reads AUTH and applies headers/auth automatically — just change config.
-
-How to add a custom validator or business check (developer steps)
-
-If you need a new type of validation that can’t be expressed with the simple config (e.g., checksum, external lookup):
-
-Add a config flag to CSV_TRANSFORM_CONFIG (e.g., "check_tax_id": true).
-
-Implement the validation function in Script 2:
-
+```python
 if config["CSV_TRANSFORM_CONFIG"].get("check_tax_id"):
     if not is_valid_tax(customer.get("tax_id")):
         errors.append("Invalid tax_id")
-
-
+```
 Script 2 already collects errors and logs them; the row will be returned as invalid.
 
-Developer tips & best practices
+---
 
-Keep FIELD_MAPPING consistent with CSV headers. Use exact header names (case-sensitive).
+### Developer Tips & Best Practices
 
-Use defensive templates in BUSINESS_LOGIC — only reference keys you know exist, or handle missing ones gracefully.
+- Keep `FIELD_MAPPING` consistent with CSV headers (case-sensitive).
+- Use defensive templates in `BUSINESS_LOGIC` (only reference keys you know exist, or handle missing ones gracefully).
+- For major changes, update `ALLOWED_FIELDS` to avoid sending unexpected keys to the API.
+- When adding complex validators, unit-test them locally (use a small Python script) before pushing to Windmill.
 
-For major changes, update ALLOWED_FIELDS to avoid sending unexpected keys to the API.
+---
 
-When adding complex validators, unit-test them locally (use small Python script) before pushing to Windmill.
+
