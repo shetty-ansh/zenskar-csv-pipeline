@@ -1,139 +1,166 @@
-Zenskar CSV Processing Flow - Local Testing Guide
+# Zenskar CSV Processing Flow - Local Testing Guide
 
-This guide explains how to run and test the CSV parsing, transformation, and API upload scripts using Windmill locally with Docker.
+This guide explains how to run and test the CSV parsing, transformation, and API upload scripts using **Windmill** locally with **Docker**.
 
-1. Prerequisites
+---
 
-Docker installed and running:
+## 1. Prerequisites
 
-Mac: Open /Applications/Docker.app
+Ensure the following are set up on your system:
 
-Windows: Start Docker Desktop
+- **Docker** installed and running:
+  - **Mac**: Open `/Applications/Docker.app`
+  - **Windows**: Start **Docker Desktop**
+  - **Linux**: Run `sudo systemctl start docker`
+- **curl** command available (optional, used to download Windmill setup files)
+- Your scripts and `config.json` in a folder (e.g., `Zenskar/`)
 
-Linux: sudo systemctl start docker
+---
 
-curl command available (optional, used to download Windmill files)
+## 2. Setup Windmill
 
-Your scripts and config JSON in a folder (e.g., Zenskar)
+### Navigate to your project folder:
 
-2. Setup Windmill
-
-Open a terminal and navigate to your project folder:
-
+```bash
 cd <path-to-Zenskar-folder>
 
+```
+## 3. Download and setup Docker Files
 
-Download the Windmill Docker setup files:
+```bash
+ curl https://raw.githubusercontent.com/windmill-labs/windmill/main/docker-compose.yml -o docker-compose.yml
+ curl https://raw.githubusercontent.com/windmill-labs/windmill/main/Caddyfile -o Caddyfile
+ curl https://raw.githubusercontent.com/windmill-labs/windmill/main/.env -o .env
+```
+-These files are also available in the Windmill GitHub repo
 
-curl https://raw.githubusercontent.com/windmill-labs/windmill/main/docker-compose.yml -o docker-compose.yml
-curl https://raw.githubusercontent.com/windmill-labs/windmill/main/Caddyfile -o Caddyfile
-curl https://raw.githubusercontent.com/windmill-labs/windmill/main/.env -o .env
+### Start Windmill:
 
-
-Alternatively, you can include these files in your repo to skip the curl steps.
-
-Start Windmill:
-
+```bash
 docker compose up -d
 
+```
+- Access Windmill in your browser:
 
-Access Windmill in your browser:
+Open http://localhost
 
-http://localhost
+**Default credentials (on first login)**:
 
+- Username: admin@windmill.dev
 
-Default credentials (if first login):
+- Password: changeme
 
-Username: admin@example.com
-
-Password: windmill
+**After first login, create a new account and login again.**
 
 3. Prepare Resources
-
 Upload your CSV file:
 
-Go to Resources → New → File Upload in Windmill UI
+**Go to Resources**
 
-Upload the CSV you want to test
+- 1.Click Add New Resource Type
+
+- 2.Click Add New Resource
+
+Use ID like: "c_<your-resource-type>"
+
+(You can refer to the example resource file in the repo)
 
 Upload your configuration JSON as a resource:
 
-Include API endpoint, batch size, field mappings, validators, and business logic
+**Include the following in the config:**
 
-Example resource name: customers_csv
+- API endpoint
+- Batch size
+- Field mappings
+- Validators
+- Business logic
 
-4. Add Scripts to a Flow
+⚠️ When creating the Flow, add a resource in Input named csvFile of type RESOURCE
 
-Create a new Flow in Windmill:
+## 4. Add Scripts to a Flow
 
-Step 1 – Parse CSV
+**🔹 Step 1** – Parse CSV
 
-Script: script1.py
+- Script: script1.py
 
-Input: the uploaded CSV resource
+- Input: Uploaded CSV resource
 
-Output: list of rows
+- Output: List of rows
 
-Step 2 – Transform Data
+🔁 Connect to next script
 
-Script: script2.py
+**🔹 Step 2**– Transform Data
 
-Input: output from Step 1
+- Script: script2.py
 
-Output: transformed customer objects
+- Input: Output from Step 1
 
-Logs will show:
+- Output: Transformed customer objects
 
+🔁 Connect to next script
+
+✅ Logs will show:
+```bash
 Rows skipped due to missing required fields
 
 Invalid email or phone
+```
+**🔹 Step 3** – Upload to Mock API
 
-Step 3 – Upload to Mock API
+- Script: script3.py
 
-Script: script3.py
+- Input: Output from Step 2
 
-Input: output from Step 2
-
-Logs will show:
-
+✅ Logs will show:
+```
 Successful uploads
 
 Failed uploads and retry attempts
+```
 
-API endpoint in config points to your mockapi.io resource
+API endpoint in config should point to your mockapi.io resource
 
-5. Running the Flow
+## 5. Running the Flow
 
-Click Run Flow in Windmill.
+- Click Run Flow in Windmill.
 
-Watch logs for each step:
+🧾 Watch logs in each step:
 
-Step 2: shows skipped rows and validation errors
+Step 2: Skipped rows and validation errors
 
-Step 3: shows uploaded vs failed rows
+Step 3: Uploaded vs failed rows
 
-Check your MockAPI.io dashboard to see the uploaded customer records.
+- Verify on **mockapi.io** dashboard that customer records are uploaded.
 
-6. Testing Different Scenarios
+## 6. Testing Different Scenarios
 
-Include valid and invalid rows in your CSV:
+- Include both valid and invalid rows in your CSV:
 
-Missing required fields
+- Missing required fields
 
-Invalid email or phone
+- Invalid email or phone
 
-Empty cells
+- Empty cells
 
-Verify logs correctly capture errors
+**Verify that:**
 
-Confirm successful rows reach MockAPI.io
+- Logs correctly capture all errors
 
-7. Notes
+- Successful rows are uploaded to mockapi.io
 
-Authentication is skipped because mockapi.io does not require it.
+## 7. Notes
 
-Retry logic for failed API calls is handled in script3.py.
+- Authentication is skipped here (mockapi.io doesn't support it).
 
-Your flow is modular:
+- Retry logic for failed API calls is implemented in script3.py.
 
-You can replace CSV, change validation rules, or update field mappings via the config JSON without editing scripts.
+- The flow is modular:
+
+You can replace the CSV
+
+Change validation rules
+
+Update field mappings via config.json
+
+**➜ All without majorly modifying any Python scripts.**
+
